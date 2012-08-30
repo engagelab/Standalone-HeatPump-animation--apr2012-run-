@@ -300,7 +300,6 @@
 			
 			protected function getLevel1Id_resultHandler(event:ResultEvent):void {
 				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
-				//level1_id = res.task_id;
 				data_id = res.data_id;
 				
 				if(new Number(res.data) > 1000 && new Number(res.data) < 20000 && this.currentState == simuApril2012.TASK_1) {
@@ -317,7 +316,6 @@
 			
 			protected function getLevel2Id_resultHandler(event:ResultEvent):void {
 				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
-				//level2_id = res.task_id;
 				simustack.selectedIndex=2;
 			}
 			
@@ -327,8 +325,6 @@
 			
 			protected function getLevel3Id_resultHandler(event:ResultEvent):void {
 				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
-				//level3_id = res.task_id;
-				//simustack.selectedIndex=3;
 				if(this.currentState == simuApril2012.TASK_2) {
 					s2.zoomOut.play();
 				}
