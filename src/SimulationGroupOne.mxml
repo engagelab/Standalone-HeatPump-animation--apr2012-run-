@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" creationComplete="initView(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import listeners.AddNoteEvent;
+			import listeners.UpdateTask1Data;
+			
+			import mx.events.FlexEvent;
+			private static const pumpCoefficient:Number = 3.5;
+			
+			private function refreshCalculation():void {
+				externalEnergy.text = new String(new Number(electricityStepper.value*(pumpCoefficient-1)).toFixed());
+				outputEnergy.text = new String(new Number(electricityStepper.value + new Number(externalEnergy.text)).toFixed());
+				cost.text = new String(new Number(0.70*electricityStepper.value).toFixed());
+				saving.text = new String(new Number(0.70*(electricityStepper.value*(pumpCoefficient-1))).toFixed());
+				
+				var utd:UpdateTask1Data = new UpdateTask1Data(simuApril2012.UPDATE_TASK1_DATA, true);
+				utd.value = electricityStepper.value;
+				dispatchEvent(utd);
+			}
+			
+			protected function initView(event:FlexEvent):void {
+				resourceManager.addEventListener(Event.CHANGE, updateView);
+			}
+			
+			private function updateView(evt:Event):void {
+				if(new String(evt.currentTarget.localeChain[0]) == "nb_NO") {
+					this.currentState = "norwegian";
+				}
+				else {
+					this.currentState = "english";	
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="norwegian" />
+		<s:State name="english" />
+	</s:states>
+	
+	<s:Rect width="100%" height="100%">
+		<s:fill>
+			<s:SolidColor color="#FFFFFF" alpha=".1"/>
+		</s:fill>
+	</s:Rect>
+	
+	<s:Group horizontalCenter="0" verticalCenter="0" >
+		<s:BitmapImage id="bck" source="@Embed('assets/level1_no.png')" source.english="@Embed('assets/level1_en.png')">
+			<s:filters>
+				<s:DropShadowFilter distance="10" angle="45" alpha=".5" color="#333333"/>
+			</s:filters>
+		</s:BitmapImage>
+		<s:HGroup x="{bck.x + 70}" y="{bck.y+170}" verticalAlign="middle">
+			<s:NumericStepper id="electricityStepper" minimum="1000" stepSize="1000" maximum="20000" width="75" change="refreshCalculation()" />
+			<s:Label color="#FFFFFF" text="kW/h" fontSize="18" fontWeight="bold"/>
+		</s:HGroup>
+		<s:HGroup verticalAlign="middle" width="160" x="{bck.x + 50}" y="{bck.y+410}" horizontalAlign="center">
+			<s:Label id="externalEnergy" color="#FFFFFF" text="0" fontSize="18" fontWeight="bold"/>
+			<s:Label color="#FFFFFF" text="kW/h" fontSize="18" fontWeight="bold"/>
+		</s:HGroup>
+		<s:HGroup x="{bck.x + 480}" y="{bck.y+280}" verticalAlign="middle">
+			<s:Label color="#FFFFFF" text="{resourceManager.getString('LocalizedStrings', 'COEFF')}" width="150" textAlign="right" fontSize="18" fontWeight="bold"/>
+			<s:BorderContainer borderColor="#FFFFFF" width="100" height="100%" minHeight="20" backgroundAlpha="0" borderStyle="solid" borderWeight="2">
+				<s:Label color="#FFFFFF" width="100%" height="100%" textAlign="center" verticalAlign="middle" text="?" fontSize="15" fontWeight="bold"/>
+			</s:BorderContainer>
+		</s:HGroup>
+		<s:HGroup x="{bck.x + 850}" y="{bck.y+290}" width="300">
+			<s:VGroup horizontalAlign="right">
+				<s:Label id="outputEnergy" color="#666666" text="0" fontSize="25" fontWeight="bold"/>
+				<s:Label id="cost" color="#666666" text="0" fontSize="20" fontWeight="bold"/>
+				<s:Label id="saving" color="#666666" text="0" fontSize="20" fontWeight="bold"/>
+			</s:VGroup>
+			<s:VGroup horizontalAlign="left">
+				<s:Label color="#666666" text="kW/h" fontSize="25" fontWeight="bold"/>
+				<s:Label color="#666666" text="{'NOK/h '+resourceManager.getString('LocalizedStrings', 'ADDED')}" fontSize="20" fontWeight="bold"/>
+				<s:Label color="#666666" text="{'NOK/h '+resourceManager.getString('LocalizedStrings', 'FROM_SURROUNDINGS')}" fontSize="20" fontWeight="bold"/>
+			</s:VGroup>
+		</s:HGroup>
+	</s:Group>
+</s:NavigatorContent>

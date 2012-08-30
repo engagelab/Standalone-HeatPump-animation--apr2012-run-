@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="group1_creationCompleteHandler(event)">
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			import spark.effects.animation.RepeatBehavior;
+			
+			protected function group1_creationCompleteHandler(event:FlexEvent):void {
+				glower.play();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:GlowFilter id="glow" blurX="16" blurY="16" color="#FFFFFF" />
+		<s:AnimateFilter id="glower" target="{elli}" bitmapFilter="{glow}" duration="1000" repeatCount="0" repeatBehavior="{RepeatBehavior.REVERSE}">
+			<s:SimpleMotionPath property="alpha" valueFrom="0" valueTo="1"/>
+		</s:AnimateFilter>
+	</fx:Declarations>
+	
+	<s:Ellipse id="elli" width="20" height="20">
+		<s:fill>
+			<s:SolidColor color="#FFFFFF"/>
+		</s:fill>
+	</s:Ellipse>
+</s:Group>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:local="*" xmlns:components="components.*" creationComplete="initGroup(event)" width="100%" height="100%"> 
+	<fx:Script>
+ 		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			[Bindable] private var fluid_state:String;
+			[Bindable] private var temperature:String;
+			[Bindable] private var pressure:Number;
+			
+			
+			private static const dimmedValue:Number = .3;
+			
+			private static const MIN_COLD_TEMP:Number = 4;
+			private static const MAX_COLD_TEMP:Number = 7;
+			private var mid_cold_temp:Number = (MAX_COLD_TEMP+MIN_COLD_TEMP)/2;
+			private static const COLD_PRESS:Number = 5;
+			
+			private static const MIN_WARM_TEMP:Number = 28;
+			private static const MAX_WARM_TEMP:Number = 70;
+			private var mid_warm_temp:Number = (MAX_WARM_TEMP+MIN_WARM_TEMP)/2;
+			private static const WARM_PRESS:Number = 17;
+			
+			private var yy:Number;
+			
+			protected function initGroup(event:FlexEvent):void {
+				simu3.tl.buttonMode = true;
+				simu3.tl.addEventListener(MouseEvent.MOUSE_OVER, handleSimu3Over);
+				simu3.tl.addEventListener(MouseEvent.MOUSE_OUT, handleSimu3Out);
+				
+				simu3.tr.buttonMode = true;
+				simu3.tr.addEventListener(MouseEvent.MOUSE_OVER, handleSimu3Over);
+				simu3.tr.addEventListener(MouseEvent.MOUSE_OUT, handleSimu3Out);
+				
+				simu3.br.buttonMode = true;
+				simu3.br.addEventListener(MouseEvent.MOUSE_OVER, handleSimu3Over);
+				simu3.br.addEventListener(MouseEvent.MOUSE_OUT, handleSimu3Out);
+				
+				simu3.bl.buttonMode = true;
+				simu3.bl.addEventListener(MouseEvent.MOUSE_OVER, handleSimu3Over);
+				simu3.bl.addEventListener(MouseEvent.MOUSE_OUT, handleSimu3Out);
+			}
+			
+			private function handleSimu3Over(evt:MouseEvent):void {
+				infoBox.visible = true;
+				switch(evt.currentTarget.name) {
+					case 'tl':
+						fluid_state = resourceManager.getString('LocalizedStrings', 'SIMU3_GAS');
+						pressure = COLD_PRESS;
+						break;
+					case 'tr':
+						fluid_state = resourceManager.getString('LocalizedStrings', 'SIMU3_GAS');
+						pressure = WARM_PRESS;
+						break;
+					case 'br':
+						fluid_state = resourceManager.getString('LocalizedStrings', 'SIMU3_FLUID');
+						pressure = WARM_PRESS;
+						break;
+					case 'bl':
+						fluid_state = resourceManager.getString('LocalizedStrings', 'SIMU3_FLUID');
+						pressure = COLD_PRESS;
+						break;
+				}
+				
+				stage.addEventListener(MouseEvent.MOUSE_MOVE, updateInfoPosition);
+			}
+			
+			private function updateInfoPosition(evt:MouseEvent):void {
+				infoBox.x = mouseX + 10;
+				infoBox.y = mouseY + 10;
+				updateDynamicTemp(evt.target as MovieClip, mouseX, mouseY);
+			}
+			
+			private function updateDynamicTemp(cont:MovieClip, xpos:Number, ypos:Number):void {
+				if(cont != null) {
+					var pt:Point = new Point(xpos, ypos);
+					pt = simu3.globalToLocal(pt);
+					switch(cont.name) {
+						case 'tl':
+							//temperature = MAX_COLD_TEMP;
+							yy = cont.height - pt.y;
+							temperature = ((((MAX_COLD_TEMP-mid_cold_temp)*yy)/cont.height)+mid_cold_temp).toFixed(1);
+							break;
+						case 'tr':
+							yy = cont.height - pt.y;
+							temperature = ((((MAX_WARM_TEMP-mid_warm_temp)*yy)/cont.height)+mid_warm_temp).toFixed(1);
+							break;
+						case 'br':
+							yy = cont.height - (pt.y - 254.95);
+							temperature = ((((mid_warm_temp-MIN_WARM_TEMP)*yy)/cont.height)+MIN_WARM_TEMP).toFixed(1);
+							break;
+						case 'bl':
+							yy = cont.height - (pt.y - 252.95);
+							temperature = ((((mid_cold_temp-MIN_COLD_TEMP)*yy)/cont.height)+MIN_COLD_TEMP).toFixed(1);
+							break;
+					}
+				}
+			}
+			
+			private function handleSimu3Out(evt:MouseEvent):void {
+				stage.removeEventListener(MouseEvent.MOUSE_MOVE, updateInfoPosition);
+				infoBox.visible = false;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="norwegian" />
+		<s:State name="english" />
+	</s:states>
+	
+	<s:Rect width="100%" height="100%">
+		<s:fill>
+			<s:SolidColor color="#FFFFFF" alpha=".1"/>
+		</s:fill>
+	</s:Rect>
+	<s:Group horizontalCenter="0" verticalCenter="0">
+		<s:VideoDisplay autoPlay="true" loop="true" source="assets/vid/lev3.mp4" />
+		<local:hp id="simu3" />
+	</s:Group>
+	<!--
+	<local:hp id="simu3" width="518" height="580" horizontalCenter="0" verticalCenter="0" />
+	-->
+	<s:BorderContainer id="infoBox" cornerRadius="5" backgroundColor="#333333" backgroundAlpha=".7" borderColor="#999999" visible="false">
+		<s:VGroup left="10" top="10" right="10" bottom="10">
+			<s:Label color="#FFFFFF" text="{resourceManager.getString('LocalizedStrings', 'SIMU3_STATE')+': '+fluid_state}" />
+			<s:Label color="#FFFFFF" text="{resourceManager.getString('LocalizedStrings', 'SIMU3_TEMP')+': '+temperature+' °C'}" />
+			<s:Label color="#FFFFFF" text="{resourceManager.getString('LocalizedStrings', 'SIMU3_PRESS')+': '+pressure+' bar'}" />
+		</s:VGroup>
+	</s:BorderContainer>
+</s:NavigatorContent>
+
+

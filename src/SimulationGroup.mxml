@@ -1,0 +1,453 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:NavigatorContent xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					xmlns:s="library://ns.adobe.com/flex/spark" 
+					xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:local="*" xmlns:components="components.*" creationComplete="initListeners(event)" skinClass="skins.RadialGradientBackground">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.pfp.events.JPEGAsyncCompleteEvent;
+			import com.pfp.utils.JPEGAsyncEncoder;
+			
+			import listeners.AddNoteEvent;
+			import listeners.DeleteNoteEvent;
+			import listeners.UpdateStatusEvent;
+			import listeners.UpdateTask1Data;
+			
+			import mx.controls.Alert;
+			import mx.controls.FlexNativeMenu;
+			import mx.controls.Menu;
+			import mx.core.DragSource;
+			import mx.core.UIComponent;
+			import mx.core.windowClasses.StatusBar;
+			import mx.events.CloseEvent;
+			import mx.events.DragEvent;
+			import mx.events.EffectEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ResizeEvent;
+			import mx.managers.CursorManager;
+			import mx.managers.DragManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.Base64Encoder;
+			
+			[Bindable] public var run_id:String = "";
+			[Bindable] public var project_id:String = "";
+			[Bindable] public var act_id:String = "";
+			[Bindable] public var scene_id:String = "";
+			[Bindable] public var level1_id:String = "";
+			[Bindable] public var level2_id:String = "";
+			[Bindable] public var level3_id:String = "";
+			[Bindable] public var group_id:String = "";
+			[Bindable] private var data_id:String = "";
+			
+			private var asyncEncoder:JPEGAsyncEncoder;
+			
+			private var picId:String;
+			private var droppedActivity:Pit;
+			private var movedActivity:Pit;
+			private var deletedActivity:Pit;
+			private var righClickMenu:Menu = null;
+			private var updateStatusEvent:UpdateStatusEvent;
+			
+			private var menuMoving:Boolean = false;
+			
+			private function deleteCloseHandler(event:CloseEvent):void {
+				if(event.detail == Alert.YES) {
+					var upurlRequest:URLRequest = new URLRequest(simuApril2012.HOST+"/task/postit/"+deletedActivity.id);
+					upurlRequest.method = URLRequestMethod.DELETE;
+					var uploader:URLLoader = new URLLoader();
+					uploader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+					uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, delhttpStatusHandler);
+					uploader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+					uploader.load(upurlRequest);
+				}
+			}
+			
+			private function delhttpStatusHandler(ev:HTTPStatusEvent):void {
+				if(ev.status == 200) {
+					commentsHolder.removeElement(deletedActivity);
+				}
+			}
+			
+			private function dragEnterHandler(event:DragEvent):void {
+				DragManager.acceptDragDrop(NavigatorContent(event.currentTarget));
+			}
+			
+			private function dragDropHandler(event:DragEvent):void {	
+				droppedActivity = new Pit();
+				droppedActivity.project_id = project_id;
+				droppedActivity.run_id = run_id;
+				droppedActivity.scene_id = scene_id;
+				droppedActivity.group_id = group_id;
+				droppedActivity.task_id = getTaskId(this.currentState);
+				droppedActivity.content = "";
+				droppedActivity.x = NavigatorContent(event.currentTarget).mouseX - 75;
+				droppedActivity.y = NavigatorContent(event.currentTarget).mouseY - 75;
+				droppedActivity.addEventListener("dragEnd", savePIT);
+				droppedActivity.addEventListener(CloseEvent.CLOSE, deletePit);
+										
+				var urlRequest:URLRequest = new URLRequest(simuApril2012.HOST+"/task/postit/");
+				urlRequest.method = URLRequestMethod.POST;
+				urlRequest.contentType = "application/json";
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(droppedActivity.getAsObject());
+				var loader:URLLoader = new URLLoader();
+				loader.addEventListener(Event.COMPLETE, completeHandler);
+				loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+				loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				loader.load(urlRequest);
+			}
+			
+			private function savePIT(evt:Event):void {
+				movedActivity = Pit(evt.target);
+				movedActivity.content = movedActivity.pitContent.text;
+				
+				var upurlRequest:URLRequest = new URLRequest(simuApril2012.HOST+"/task/postit/"+movedActivity.id);
+				upurlRequest.method = URLRequestMethod.PUT;
+				upurlRequest.contentType = "application/json";
+				upurlRequest.data = com.adobe.serialization.json.JSON.encode(movedActivity.getAsObject());
+				var uploader:URLLoader = new URLLoader();
+				uploader.addEventListener(Event.COMPLETE, upcompleteHandler);
+				uploader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+				uploader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				uploader.load(upurlRequest);
+			}
+			
+			private function getTaskId(state:String):String {
+				var level:String;
+				switch (state) {
+					case simuApril2012.TASK_1:
+						level = level1_id;
+						break;
+					case simuApril2012.TASK_2:
+						level = level2_id;
+						break;
+					case simuApril2012.TASK_3:
+						level = level3_id;
+						break;
+				}
+				return level;
+			}
+			
+			private function upcompleteHandler(ev:Event):void {
+				movedActivity.savePit.enabled = false;
+				checkPlacement(movedActivity);
+			}
+			
+			private function securityErrorHandler(ev:SecurityErrorEvent):void
+			{
+				trace("Security bubu");
+			}
+			
+			private function httpStatusHandler(ev:HTTPStatusEvent):void
+			{
+				trace(ev.status);
+			}
+			
+			private function ioErrorHandler(ev:IOErrorEvent):void
+			{
+				trace(ev.text);
+			}
+			
+			private function completeHandler(ev:Event):void
+			{
+				var loader:URLLoader = URLLoader(ev.target);
+				
+				commentsHolder.addElement(droppedActivity);
+				var s:String = loader.data as String;
+				var resultOb:Object = com.adobe.serialization.json.JSON.decode(s, false);
+				
+				if(simuApril2012.HOST == "http://localhost:4567") {
+					droppedActivity.id = resultOb._id;
+				}
+				else {
+					droppedActivity.id = resultOb.id;
+				}
+
+				checkPlacement(droppedActivity);
+				
+			}
+			
+			protected function handleMouseOver(e:MouseEvent):void {
+				updateStatus('Drag and drop to relocate.')
+			}
+			
+			protected function handleMouseOut(e:MouseEvent):void {
+				updateStatus('');
+			}
+			
+			private function checkPlacement(rea:Pit):void {
+				var positionChanged:Boolean = false;
+				
+				if(rea.x < 0) {
+					rea.x = 0;
+					positionChanged = true;
+				}
+				
+				if(rea.x+rea.width > this.width) {
+					rea.x = this.width-rea.width;
+					positionChanged = true;
+				}
+				
+				if(rea.y < 0) {
+					rea.y = 0;
+					positionChanged = true;
+				}
+				
+				if(rea.y+rea.height > this.height) {
+					rea.y = this.height-rea.height;
+					positionChanged = true;
+				}
+				
+				if(positionChanged) {
+					var upurlRequest:URLRequest = new URLRequest(simuApril2012.HOST+"/group/task/postits/"+movedActivity.id);
+					upurlRequest.method = URLRequestMethod.PUT;
+					upurlRequest.data = com.adobe.serialization.json.JSON.encode(rea.getAsObject());
+					var uploader:URLLoader = new URLLoader();
+					uploader.addEventListener(Event.COMPLETE, upcompleteHandler);
+					uploader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+					uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+					uploader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+					uploader.load(upurlRequest);
+				}
+				
+			}
+			
+			private function updhandler(ev:Event):void {
+				trace("updated");
+			}
+			
+			protected function handleStartDrag(e:MouseEvent):void {
+				var dragSource:DragSource = new DragSource();            
+				
+				var proxy:Activity = new Activity();
+				proxy.width = e.currentTarget.width;
+				proxy.height = e.currentTarget.height;
+				
+				DragManager.doDrag(e.currentTarget as UIComponent, dragSource, e, proxy);
+			}
+			
+			protected function updateStatus(text:String):void {
+				updateStatusEvent = new UpdateStatusEvent(simuApril2012.STATUS_ACTION, true);
+				updateStatusEvent.message = text;
+				dispatchEvent(updateStatusEvent);
+			}
+			
+			protected function getCommentsForGroup_resultHandler(event:ResultEvent):void {
+				var o:Array = com.adobe.serialization.json.JSON.decode(String(event.result));
+				var ane:AddNoteEvent;
+				for each (var comment:Object in o) {
+					droppedActivity = new Pit();
+					commentsHolder.addElement(droppedActivity);
+					droppedActivity.x = comment.xpos;
+					droppedActivity.y = comment.ypos;
+					droppedActivity.project_id = comment.project_id;
+					droppedActivity.run_id = comment.run_id;
+					droppedActivity.scene_id = comment.scene_id;
+					droppedActivity.group_id = comment.group_id;
+					droppedActivity.task_id = comment.task_id;
+					droppedActivity.content = comment.content;
+					
+					if(simuApril2012.HOST == "http://localhost:4567") {
+						droppedActivity.id = comment._id;
+					}
+					else {
+						droppedActivity.id = comment.id;
+					}
+					droppedActivity.pitContent.text = droppedActivity.content;
+					droppedActivity.addEventListener("dragEnd", savePIT);
+					droppedActivity.addEventListener(CloseEvent.CLOSE, deletePit);
+
+				}
+			}
+			
+			protected function getCommentsForGroup_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Getgroups Error");
+			}
+			
+			protected function initListeners(event:FlexEvent):void
+			{
+				this.addEventListener(simuApril2012.SAVE_POST_IT, savePIT);
+				this.addEventListener(simuApril2012.UPDATE_TASK1_DATA, updateTask1Data);
+			}
+			
+			private function updateTask1Data(evt:UpdateTask1Data):void {
+				var task1Data:Object = new Object();
+				task1Data.data_id = data_id;
+				task1Data.data = new String(evt.value);
+				
+				var upurlRequest:URLRequest = new URLRequest(simuApril2012.HOST+"/taskdata/");
+				upurlRequest.method = URLRequestMethod.PUT;
+				upurlRequest.data = com.adobe.serialization.json.JSON.encode(task1Data);
+				var uploader:URLLoader = new URLLoader();
+				uploader.addEventListener(Event.COMPLETE, updhandler);
+				uploader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				uploader.addEventListener(HTTPStatusEvent.HTTP_STATUS, upT1completeHandler);
+				uploader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				uploader.load(upurlRequest);
+			}
+			
+			private function upT1completeHandler(ev:HTTPStatusEvent):void {
+				trace("Updated taskdata for level1: OK");
+			}
+			
+			private function deletePit(evt:CloseEvent):void {
+				deletedActivity = evt.target as Pit;
+				Alert.show(resourceManager.getString('LocalizedStrings', 'DELETE_COMMENT_QUESTION'), resourceManager.getString('LocalizedStrings', 'DELETE_COMMENT_TITLE'), 3, null, deleteCloseHandler);
+			}
+			
+			protected function getLevel1Id_resultHandler(event:ResultEvent):void {
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				//level1_id = res.task_id;
+				data_id = res.data_id;
+				
+				if(new Number(res.data) > 1000 && new Number(res.data) < 20000 && this.currentState == simuApril2012.TASK_1) {
+					s1.electricityStepper.value = new Number(res.data);
+					s1.electricityStepper.dispatchEvent(new Event(Event.CHANGE, true));
+				}
+
+				simustack.selectedIndex=1;
+			}
+			
+			protected function getLevel1Id_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Get Level1Id Error");
+			}
+			
+			protected function getLevel2Id_resultHandler(event:ResultEvent):void {
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				//level2_id = res.task_id;
+				simustack.selectedIndex=2;
+			}
+			
+			protected function getLevel2Id_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Get Level2Id Error");
+			}
+			
+			protected function getLevel3Id_resultHandler(event:ResultEvent):void {
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				//level3_id = res.task_id;
+				//simustack.selectedIndex=3;
+				if(this.currentState == simuApril2012.TASK_2) {
+					s2.zoomOut.play();
+				}
+				else {
+					dispatchEvent(new Event(simuApril2012.SIMULATION2_TRANSITION_OVER, true));
+				}
+			}
+			
+			protected function getLevel3Id_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Get Level3Id Error");
+			}
+			
+			protected function state_enterStateHandler(s:String):void {
+				commentsHolder.removeAllElements();
+				
+				switch(s) {
+					case simuApril2012.TASK_1:
+						getLevel1Id.headers = { Accept:'application/json' };
+						getLevel1Id.url = simuApril2012.HOST + "/task/postit/?taskId=" + level1_id + "&runId=" + run_id + "&groupId=" +group_id;
+						getLevel1Id.send();
+						break;
+					case simuApril2012.TASK_2:
+						getLevel2Id.headers = { Accept:'application/json' };
+						getLevel2Id.url = simuApril2012.HOST + "/task/postit/?taskId=" + level2_id + "&runId=" + run_id + "&groupId=" +group_id;
+						getLevel2Id.send();
+						break;
+					case simuApril2012.TASK_3:
+						getLevel3Id.headers = { Accept:'application/json' };
+						getLevel3Id.url = simuApril2012.HOST + "/task/postit/?taskId=" + level3_id + "&runId=" + run_id + "&groupId=" +group_id;
+						getLevel3Id.send();
+						break;
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Scale id="Hide" scaleXFrom="1" scaleXTo="0" scaleYFrom="1" scaleYTo="0" duration="1000" />
+		<s:Scale id="Show" scaleXFrom="0" scaleXTo="1" scaleYFrom="0" scaleYTo="1" duration="1000">
+			<s:effectEnd>
+				<![CDATA[
+					var params:Object;
+					if(simustack.selectedIndex == 1) {
+						params = new Object();
+						params.groupId = group_id;
+						params.taskId = level1_id;
+						params.runId = run_id;
+				
+						getCommentsForGroup.send(params);
+					}
+				
+					if(simustack.selectedIndex == 2) {
+						params = new Object();
+						params.groupId = group_id;
+						params.taskId = level2_id;
+						params.runId = run_id;
+						
+						getCommentsForGroup.send(params);
+					}
+				
+					if(simustack.selectedIndex == 3) {
+						params = new Object();
+						params.groupId = group_id;
+						params.taskId = level3_id;
+						params.runId = run_id;
+						
+						getCommentsForGroup.send(params);
+					}
+				]]>
+			</s:effectEnd>
+		</s:Scale>
+		<s:HTTPService url="{simuApril2012.HOST+'/task/postit/'}" showBusyCursor="true" method="GET" result="getCommentsForGroup_resultHandler(event)" fault="getCommentsForGroup_faultHandler(event)" resultFormat="text" id="getCommentsForGroup" />
+		<s:HTTPService result="getLevel1Id_resultHandler(event)" fault="getLevel1Id_faultHandler(event)" resultFormat="text" id="getLevel1Id" />
+		<s:HTTPService result="getLevel2Id_resultHandler(event)" fault="getLevel2Id_faultHandler(event)" resultFormat="text" id="getLevel2Id" />
+		<s:HTTPService result="getLevel3Id_resultHandler(event)" fault="getLevel3Id_faultHandler(event)" resultFormat="text" id="getLevel3Id" />
+	</fx:Declarations>
+	
+	
+	<s:states>
+		<s:State name="default" enterState="simustack.selectedIndex=0" />
+		<s:State name="level1" enterState="state_enterStateHandler('level1')" />
+		<s:State name="level2" enterState="state_enterStateHandler('level2')"/>
+		<s:State name="level3" enterState="state_enterStateHandler('level3')"/>
+	</s:states>
+	
+	<mx:ViewStack id="simustack" width="100%" height="100%" creationComplete="DragManager.isDragging;" >
+		<s:NavigatorContent />
+		<local:SimulationGroupOne id="s1" width="100%" height="100%" dragEnter="dragEnterHandler(event)" dragDrop="dragDropHandler(event)" showEffect="{Show}" transformX="{this.width/2}" transformY="{this.height/2}" />
+		<local:SimulationGroupTwo id="s2" width="100%" height="100%" dragEnter="dragEnterHandler(event)" dragDrop="dragDropHandler(event)" showEffect="{Show}" transformX="{this.width/2}" transformY="{this.height/2}" />
+		<local:SimulationGroupThree id="s3" width="100%" height="100%" dragEnter="dragEnterHandler(event)" dragDrop="dragDropHandler(event)" showEffect="{Show}" transformX="{this.width/2}" transformY="{this.height/2}" />
+	</mx:ViewStack>
+	
+	<s:Group id="commentsHolder" width="100%" height="100%" />
+	
+	<s:VGroup gap="40">
+		<s:Group id="naviMenu">
+			<s:Rect width="100%" height="100%" topLeftRadiusX="0" topLeftRadiusY="0" topRightRadiusX="10" topRightRadiusY="10" bottomLeftRadiusX="0" bottomLeftRadiusY="0" bottomRightRadiusX="10" bottomRightRadiusY="10">
+				<s:fill>
+					<s:SolidColor color="#999999" alpha=".7" />
+				</s:fill>
+			</s:Rect>
+			<s:VGroup top="20" left="20" right="20" bottom="20">
+				<s:Label text="{resourceManager.getString('LocalizedStrings', 'TF_LEVEL')}:" textDecoration="underline" color="#FFFFFF" />
+				<s:Button label="{resourceManager.getString('LocalizedStrings', 'BUTTON_LEVEL1')}" width="100" height="50" enabled="{simustack.selectedIndex != 1 ? true : false}" click="this.currentState=simuApril2012.TASK_1;simustack.selectedIndex=1"/>
+				<s:Button label="{resourceManager.getString('LocalizedStrings', 'BUTTON_LEVEL2')}" width="100" height="50" enabled="{simustack.selectedIndex != 2 ? true : false}" click="this.currentState=simuApril2012.TASK_2;simustack.selectedIndex=2"/>
+				<s:Button label="{resourceManager.getString('LocalizedStrings', 'BUTTON_LEVEL3')}" width="100" height="50" enabled="{simustack.selectedIndex != 3 ? true : false}" click="this.currentState=simuApril2012.TASK_3;simustack.selectedIndex=3"/>
+			</s:VGroup>
+		</s:Group>
+		
+		<s:Group>
+			<s:Rect width="100%" height="100%" topLeftRadiusX="0" topLeftRadiusY="0" topRightRadiusX="10" topRightRadiusY="10" bottomLeftRadiusX="0" bottomLeftRadiusY="0" bottomRightRadiusX="10" bottomRightRadiusY="10">
+				<s:fill>
+					<s:SolidColor color="#999999" alpha=".7" />
+				</s:fill>
+			</s:Rect>
+			<s:VGroup top="20" left="20" right="20" bottom="20" gap="10">
+				<s:Label text="{resourceManager.getString('LocalizedStrings', 'TF_TOOLS')}:" textDecoration="underline" color="#FFFFFF" />
+				<local:Activity width="45" height="45" buttonMode="true" mouseDown="handleStartDrag(event)" mouseOver="updateStatus('Drag and drop post-it to make a note')" mouseOut="updateStatus('')" />
+			</s:VGroup>
+		</s:Group>
+	</s:VGroup>
+</s:NavigatorContent>

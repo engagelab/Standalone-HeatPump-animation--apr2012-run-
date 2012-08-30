@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   applicationComplete="initApp(event)"
+					   backgroundColor="#FFFFFF"
+					   xmlns:components="components.*" xmlns:local="*" xmlns:resize="flex.utils.ui.resize.*">
+	<fx:Script>
+		<![CDATA[
+			import air.net.URLMonitor;
+			import air.update.ApplicationUpdaterUI;
+			import air.update.events.UpdateEvent;
+			
+			import com.adobe.serialization.json.JSON;
+			
+			import components.GroupButton;
+			
+			import listeners.UpdateStatusEvent;
+			
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.managers.CursorManager;
+			import mx.resources.ResourceManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.Button;
+			
+			public static const HOST:String = "http://scihub.uio.no";
+			
+			protected var monitor:URLMonitor;
+			
+			public static const HOME_ACTION:String = "GO_HOME";
+			public static const CLOSE_APP_ACTION:String = "CLOSE_APP";
+			public static const DELETE_COMMENT:String = "DELETE_COMMENT";
+			public static const STATUS_ACTION:String = "UPDATE_STATUS";
+			public static const UPDATE_TASK1_DATA:String = "UPDATE_TASK1_DATA";
+			public static const SAVE_POST_IT:String = "SAVE_POST_IT";
+			public static const SIMULATION2_EVENT:String = "SIMULATION2_EVENT";
+			public static const SIMULATION2_TRANSITION_OVER:String = "SIMULATION2_TRANSITION_OVER";
+			public static const GROUP_BUTTON_WIDTH:Number = 200;
+			
+			public static const PROJECT_NAME:String = "miracle";
+			public static const ACT_NAME:String = "heatpump";
+			public static const SCENE_NAME:String = "simulations"; //simulations
+			public static const TASK_1:String = "level1"; //simulations
+			public static const TASK_2:String = "level2"; //simulations
+			public static const TASK_3:String = "level3"; //simulations
+			
+			private var appUpdater:ApplicationUpdaterUI;
+			
+			[Bindable] private var run_id:String = "";
+			[Bindable] private var project_id:String = "";
+			[Bindable] private var act_id:String = "";
+			[Bindable] private var scene_id:String = "";
+			[Bindable] private var task1_id:String = "";
+			[Bindable] private var task2_id:String = "";
+			[Bindable] private var task3_id:String = "";
+			
+			[Bindable] private var group_name:String = "";
+			[Bindable] private var group_id:String = "";
+			
+			protected function initApp(event:FlexEvent):void {
+				resourceManager.localeChain = ["nb_NO"];
+				
+				// Detecting online/offline network connectivity with a URLMonitor
+				monitor = new URLMonitor(new URLRequest(HOST)); // change URL to URL desired
+				monitor.addEventListener(StatusEvent.STATUS, onStatusChange);
+				monitor.pollInterval = 20000;// Milliseconds
+				monitor.start();
+				
+				this.maximize();
+				//stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+				this.addEventListener(HOME_ACTION, goHome);
+				this.addEventListener(STATUS_ACTION, updateStatus);
+				this.addEventListener(CLOSE_APP_ACTION, handleCloseApplication);
+				
+				//look if a new version od the app is available
+				appUpdater = new ApplicationUpdaterUI();
+				appUpdater.delay = 1;
+				appUpdater.updateURL = HOST+"/public/simulation/update-descriptor.xml";
+				appUpdater.isCheckForUpdateVisible = false;
+				appUpdater.isDownloadUpdateVisible = true;
+				appUpdater.isDownloadProgressVisible = true;
+				appUpdater.isInstallUpdateVisible = true;
+				appUpdater.addEventListener(ErrorEvent.ERROR, onError);
+				appUpdater.addEventListener(UpdateEvent.INITIALIZED, initFinished);
+				appUpdater.initialize();
+			}
+			
+			protected function onStatusChange(e:StatusEvent):void {
+				if (!monitor.available) {
+					Alert.show("Your computer seems to be disconnected to the server.\n\nYour work will not be saved from now on.\n\nPlease ask your teacher/administrator for help.", "Network connection error");
+				}
+				else {
+					trace("connected");
+				}
+			}
+			
+			//back to the groups presentation page
+			protected function goHome(event:Event):void {
+				simuStack.selectedIndex = 0;
+				event.stopPropagation();
+			}
+			
+			private function updateStatus(evt:UpdateStatusEvent):void {
+				statusText.text = evt.message;
+			}
+			
+			private function handleCloseApplication(evt:Event):void {
+				this.close();
+			}
+			
+			private function onError(event:ErrorEvent):void {
+				Alert.show(event.toString());
+			}
+			
+			private function initFinished(evt:UpdateEvent):void {
+				if(monitor.available) {
+					appUpdater.checkNow();
+					CursorManager.setBusyCursor();
+					getRunId.headers = { Accept:"application/json" };
+					getRunId.send();
+				}
+			}
+			
+			protected function getRunId_resultHandler(event:ResultEvent):void {
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				run_id = res.runId;
+				
+				getProjectId.headers = { Accept:"application/json" };
+				getProjectId.send();
+			}
+			
+			protected function getRunId_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Get RunId Error");
+			}
+			
+			private function getGroupMembers(members:Array):String {
+				var mems:String = "";
+				for each (var i:Object in members) {
+					mems = mems + i.name + "\n";
+				}
+				return mems;
+			}
+			
+			private function handleChooseGroup(evt:MouseEvent):void {
+				group_name = (evt.currentTarget as Button).label;
+				group_id = ((evt.currentTarget as Button).name).substr(4);
+				
+				sg1.currentState = TASK_1;
+				simuStack.selectedIndex = 1;
+			}
+			
+			protected function getProjectId_resultHandler(event:ResultEvent):void {
+				CursorManager.removeBusyCursor();
+				
+				var res:Object = com.adobe.serialization.json.JSON.decode(String(event.result));
+				project_id = res.id;
+				
+				
+				for each (var act:Object in res.sacts) {
+					if(act.title == ACT_NAME) {
+						act_id = act.id;
+					}
+				}
+				
+				for each (var scene:Object in res.sscenes) {
+					if(scene.title == SCENE_NAME && scene.actId == act_id) {
+						scene_id = scene.id;
+					}
+				}
+				
+				for each (var task:Object in res.stasks) {
+					if(task.actId == act_id && task.sceneId == scene_id && task.title == TASK_1) {
+						task1_id = task.id;
+					}
+					else if(task.actId == act_id && task.sceneId == scene_id && task.title == TASK_2) {
+						task2_id = task.id;
+					}
+					else if(task.actId == act_id && task.sceneId == scene_id && task.title == TASK_3) {
+						task3_id = task.id;
+					}
+				}
+				
+				getAllGroups.headers = { Accept:"application/json" };
+				getAllGroups.send();
+			}
+			
+			protected function getProjectId_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Get ProjectId Error");
+			}
+			
+			protected function getAllGroups_resultHandler(event:ResultEvent):void {
+				var o:Array = com.adobe.serialization.json.JSON.decode(String(event.result));
+				var gButt:GroupButton;
+				var ii:Number = 0;
+				for each (var i:Object in o) {
+					gButt = new GroupButton();
+					loginHGroup.addElement(gButt);
+					gButt.logger.label = i.name;
+					gButt.logger.name = "grp_"+i.id;
+					gButt.memberList.text = getGroupMembers(i.susers);
+					gButt.logger.addEventListener(MouseEvent.CLICK, handleChooseGroup);
+					ii++;
+				}
+			}
+			
+			protected function getAllGroups_faultHandler(event:FaultEvent):void {
+				Alert.show(event.fault.faultCode.toString(), "Getgroups Error");
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Metadata>
+		[ResourceBundle("LocalizedStrings")]
+	</fx:Metadata>
+	
+	<fx:Declarations>
+		<s:Fade id="Show" alphaFrom="0" alphaTo="1" duration="500" />
+		<s:Fade id="Hide" alphaFrom="1" alphaTo="0" duration="500" />
+		<s:HTTPService url="{HOST+'/rollcall/runId/'}" result="getRunId_resultHandler(event)" fault="getRunId_faultHandler(event)" resultFormat="text" id="getRunId" />
+		<s:HTTPService url="{HOST+'/project/title/'+PROJECT_NAME}" result="getProjectId_resultHandler(event)" fault="getProjectId_faultHandler(event)" resultFormat="text" id="getProjectId" />
+		<s:HTTPService url="{HOST+'/group/run/'+run_id}" result="getAllGroups_resultHandler(event)" fault="getAllGroups_faultHandler(event)" resultFormat="text" id="getAllGroups" />
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%" gap="0">
+		<components:TitleComponent id="titComp" groupName="{group_name}"/>
+		<mx:ViewStack id="simuStack" width="100%" height="100%" creationPolicy="all">
+			<s:NavigatorContent id="loginGroup" width="100%" height="100%" showEffect="{Show}" hideEffect="{Hide}" skinClass="skins.RadialGradientBackground">
+				<s:TileGroup id="loginHGroup" width="{(3*GROUP_BUTTON_WIDTH)+120}" horizontalCenter="0" verticalCenter="0" verticalGap="40" horizontalGap="20" />
+			</s:NavigatorContent>
+			<local:SimulationGroup width="100%" height="100%" showEffect="{Show}" hideEffect="{Hide}" id="sg1" run_id="{run_id}" project_id="{project_id}" act_id="{act_id}" scene_id="{scene_id}" group_id="{group_id}" level1_id="{task1_id}" level2_id="{task2_id}" level3_id="{task3_id}" />
+		</mx:ViewStack>
+	</s:VGroup>
+	
+	<components:FrameVersion />
+</s:WindowedApplication>

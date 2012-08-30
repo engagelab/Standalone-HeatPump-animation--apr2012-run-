@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<application xmlns="http://ns.adobe.com/air/application/3.1">
+	<id>no.uio.intermedia.simuApril2012</id>
+	<filename>simuApril2012</filename>
+	<name>simuApril2012</name>
+	<versionNumber>1.2.0</versionNumber>
+	<initialWindow>
+		<content>[This value will be overwritten by Flash Builder in the output app.xml]</content>
+		<title>Heat Pump Simulation</title>
+        <minimizable>true</minimizable>
+    	<maximizable>true</maximizable>
+    	<resizable>true</resizable>
+        <visible>false</visible>
+	</initialWindow>
+	<icon>
+		<image16x16>assets/icons/16.png</image16x16>
+		<image32x32>assets/icons/32.png</image32x32>
+		<image48x48>assets/icons/48.png</image48x48>
+		<image128x128>assets/icons/128.png</image128x128>
+	</icon>
+</application>

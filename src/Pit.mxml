@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<local:ResizableWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:local="*" layout="absolute" width="200" height="150" movable="true" resizable="true" showCloseButton="true" bringToFrontOnMove="true" bringToFrontOnResize="true" 
+					   verticalScrollPolicy="off" horizontalScrollPolicy="off" moveHandleColor="#ffffff" resizeHandleColor="#ffffff" verticalGap="2" chromeColor="#9DC43F" backgroundColor="#9DC43F" color="#FFFFFF">
+	
+	<fx:Script>
+		<![CDATA[
+			private var _project_id:String;
+			private var _group_id:String;
+			private var _scene_id:String;
+			private var _task_id:String;
+			private var _run_id:String;
+			[Bindable] private var _content:String;
+			
+			public function get project_id():String
+			{
+				return _project_id;
+			}
+			
+			public function set project_id(value:String):void
+			{
+				_project_id = value;
+			}
+			
+			public function get run_id():String
+			{
+				return _run_id;
+			}
+			
+			public function set run_id(value:String):void
+			{
+				_run_id = value;
+			}
+			
+			public function get task_id():String
+			{
+				return _task_id;
+			}
+			
+			public function set task_id(value:String):void
+			{
+				_task_id = value;
+			}
+			
+			public function get scene_id():String
+			{
+				return _scene_id;
+			}
+			
+			public function set scene_id(value:String):void
+			{
+				_scene_id = value;
+			}
+			
+			public function get group_id():String
+			{
+				return _group_id;
+			}
+			
+			public function set group_id(value:String):void
+			{
+				_group_id = value;
+			}
+			
+			public function getAsObject():Object {
+				var o:Object = new Object();
+				o.groupId = group_id;
+				o.runId = run_id;
+				o.taskId = task_id;
+				o.content = content;
+				o.xpos = this.x;
+				o.ypos = this.y;
+				return o;
+			}
+			
+			public function get content():String
+			{
+				return _content;
+			}
+			
+			public function set content(value:String):void
+			{
+				_content = value;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:VGroup top="5" left="5" right="5" bottom="5">
+		<s:TextArea id="pitContent" height="100%" width="100%" contentBackgroundAlpha="0" borderAlpha="0" change="{savePit.enabled=true}"></s:TextArea>
+		<s:Button id="savePit" label="SAVE" width="100%" chromeColor="#9DC43F" skinClass="skins.SavePITSkin" enabled="false" click="dispatchEvent(new Event(simuApril2012.SAVE_POST_IT, true))" />
+	</s:VGroup>
+	
+</local:ResizableWindow>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" gap="0" horizontalAlign="center" buttonMode="true" mouseOver="vgroup1_mouseOverHandler(event)" mouseOut="vgroup1_mouseOutHandler(event)" xmlns:local="*" xmlns:utili="utili.*">
+	
+	<fx:Script>
+		<![CDATA[
+			[Bindable] public var source:Object;
+			[Bindable] public var sourceFlipped:Object;
+			[Bindable] public var imageWidth:Object;
+			[Bindable] public var imageHeight:Object;
+			[Bindable] public var lab:String;
+			
+			private static const colorLowMiddle:Number = 0x555555;
+			private static const colorLowEdge:Number = 0x666666;
+			private static const colorHightMiddle:Number = 0xBBBBBB;
+			private static const colorHighEdge:Number = 0xCCCCCC;
+			[Bindable] private var colorCenter:Number = 0x555555;
+			[Bindable] private var colorEdge:Number = 0x666666;
+			
+			protected function vgroup1_mouseOverHandler(event:MouseEvent):void {
+				currentState = "flipped";
+				colorCenter = colorHightMiddle;
+				colorEdge = colorHighEdge;
+				
+			}
+			
+			protected function vgroup1_mouseOutHandler(event:MouseEvent):void {
+				currentState = "normal";
+				colorCenter = colorLowMiddle;
+				colorEdge = colorLowEdge;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="flipped" />
+	</s:states>
+	
+	<s:transitions>
+		<s:Transition fromState="normal" toState="flipped" autoReverse="false">
+			<s:AnimateTransitionShader target="{image}" duration="1200" 
+									   shaderByteCode="@Embed(source='assets/Twist.pbj', mimeType='application/octet-stream')">
+				<s:easer>
+					<utili:MyBounce />
+				</s:easer>
+			</s:AnimateTransitionShader>
+		</s:Transition>
+	</s:transitions>
+	
+	<s:Label width="100%" fontSize="20" text="{lab}" textAlign="center" textDecoration="underline" />
+  	<s:BitmapImage id="image" source="{source}" smooth="true" width="{imageWidth}" height="{imageHeight}" alpha="1" source.flipped="{sourceFlipped}" />
+	<!-- <s:BitmapImage source="{source}" smooth="true" width="{image.width}" height="{image.height}" scaleY="-1" id="reflection" alpha=".1" /> -->
+	<s:Group>
+		<s:Ellipse id="elli" width="40" height="15">
+			<s:fill>
+				<s:SolidColor color="{colorCenter}" alpha=".5"/>
+			</s:fill>
+			<s:filters>
+				<s:GlowFilter blurX="50" blurY="25" color="{colorEdge}" />
+			</s:filters>
+		</s:Ellipse>
+	</s:Group>
+</s:VGroup>
